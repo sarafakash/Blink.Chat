@@ -6,8 +6,6 @@ Blink Chat is a modern, lightweight chat application designed to help you stay c
 Features
 ✨ Real-time Messaging – Send and receive messages instantly.
 
-🛠️ User Authentication – Secure sign-in and sign-up with modern authentication systems (JWT or OAuth).
-
 💬 Direct & Group Chats – Communicate 1-on-1 or in groups with your team.
 
 🔒 Data Security – End-to-end encryption ensures your conversations stay private.
