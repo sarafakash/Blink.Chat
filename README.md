@@ -23,6 +23,12 @@ Check out a live demo of Blink Chat Client in action:
 
 https://blink-chat-client-3579.vercel.app/
 
+<img width="950" alt="4" src="https://github.com/user-attachments/assets/4a94a036-6ef1-47f5-bc3d-0191760d10c3" />
+
+<img width="940" alt="5" src="https://github.com/user-attachments/assets/9ae5c09c-6def-4b68-ba14-1f39adb27b97" />
+
+
+
 
 Contributing:
 We welcome contributions! 
