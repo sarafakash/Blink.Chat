@@ -1,54 +1,75 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useEffect, useState, ChangeEvent, FormEvent, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
+import * as React from "react";
+import { useEffect, useState, ChangeEvent, FormEvent, useRef } from "react";
+import { io, Socket } from "socket.io-client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { MessageCircleIcon, Loader2, Copy } from "lucide-react";
-import { toast } from "sonner"
+import { toast } from "sonner";
 
 interface Message {
   id: string;
   content: string;
   senderId: string;
-  sender:string;
+  sender: string;
   timestamp: Date;
 }
 
-/* eslint-disable no-unused-vars */
 interface ServerToClientEvents {
-  'room-created': (code: string) => void;
-  'joined-room': (data: { roomCode: string; messages: Message[] }) => void;
-  'new-message': (message: Message) => void;
-  'user-joined': (userCount: number) => void;
-  'user-left': (userCount: number) => void;
+  "room-created": (code: string) => void;
+  "joined-room": (data: { roomCode: string; messages: Message[] }) => void;
+  "new-message": (message: Message) => void;
+  "user-joined": (userCount: number) => void;
+  "user-left": (userCount: number) => void;
   error: (message: string) => void;
 }
 
 interface ClientToServerEvents {
-  'create-room': () => void;
-  'join-room': (roomCode: string) => void;
-  'send-message': (data: { roomCode: string; message: string; userId: string , name:string}) => void;
-  'set-user-id': (userId: string) => void;
+  "create-room": () => void;
+  "join-room": (data: { roomId: string; name: string }) => void;
+  "send-message": (data: {
+    roomCode: string;
+    message: string;
+    userId: string;
+    name: string;
+  }) => void;
+  "set-user-id": (userId: string) => void;
 }
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'https://real-time-chat-tmzf.onrender.com';
-const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(SOCKET_URL);
+const SOCKET_URL =
+  process.env.NEXT_PUBLIC_SOCKET_URL ||
+  "https://real-time-chat-tmzf.onrender.com";
+const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
+  SOCKET_URL
+);
 
-const MessageGroup = ({ messages, userId }: { messages: Message[], userId: string }) => {
+const MessageGroup = ({
+  messages,
+  userId,
+}: {
+  messages: Message[];
+  userId: string;
+}) => {
   return (
     <>
       {messages.map((msg, index) => {
-        const isFirstInGroup = index === 0 || messages[index - 1]?.senderId !== msg.senderId;
-        
+        const isFirstInGroup =
+          index === 0 || messages[index - 1]?.senderId !== msg.senderId;
+
         return (
           <div
             key={msg.id}
             className={`flex flex-col ${
-              msg.senderId === userId ? 'items-end' : 'items-start'
+              msg.senderId === userId ? "items-end" : "items-start"
             }`}
           >
             {isFirstInGroup && (
@@ -59,9 +80,9 @@ const MessageGroup = ({ messages, userId }: { messages: Message[], userId: strin
             <div
               className={`inline-block rounded-lg px-3 py-1.5 break-words ${
                 msg.senderId === userId
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted'
-              } ${!isFirstInGroup ? 'mt-0.5' : 'mt-1.5'}`}
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted"
+              } ${!isFirstInGroup ? "mt-0.5" : "mt-1.5"}`}
             >
               {msg.content}
             </div>
@@ -73,14 +94,14 @@ const MessageGroup = ({ messages, userId }: { messages: Message[], userId: strin
 };
 
 export default function Page() {
-  const [roomCode, setRoomCode] = useState<string>('');
-  const [inputCode, setInputCode] = useState<string>('');
-  const [name, setName] = useState<string>("")
-  const [message, setMessage] = useState<string>('');
+  const [roomCode, setRoomCode] = useState<string>("");
+  const [inputCode, setInputCode] = useState<string>("");
+  const [name, setName] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [connected, setConnected] = useState<boolean>(false);
   const [users, setUsers] = useState<number>(0);
-  const [userId, setUserId] = useState<string>('');
+  const [userId, setUserId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -94,82 +115,85 @@ export default function Page() {
   }, [messages]);
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem('chatUserId');
-    const newUserId = storedUserId || crypto.randomUUID();
-    
-    if (!storedUserId) {
-      localStorage.setItem('chatUserId', newUserId);
-    }
-    
-    setUserId(newUserId);
+    const isValidUUID = (id: string) => /^[0-9a-fA-F\-]{36}$/.test(id);
+    const storedUserId = localStorage.getItem("chatUserId");
+    const newUserId =
+      storedUserId && isValidUUID(storedUserId)
+        ? storedUserId
+        : crypto.randomUUID();
 
-    socket.emit('set-user-id', newUserId);
+    if (!storedUserId || !isValidUUID(storedUserId)) {
+      localStorage.setItem("chatUserId", newUserId);
+    }
+
+    setUserId(newUserId);
+    socket.emit("set-user-id", newUserId);
   }, []);
 
   useEffect(() => {
-    socket.on('room-created', (code) => {
+    socket.on("room-created", (code) => {
       setRoomCode(code);
       setIsLoading(false);
-      toast.success('Room created successfully!');
+      toast.success("Room created successfully!");
     });
 
-    socket.on('joined-room', ({ roomCode, messages }) => {
+    socket.on("joined-room", ({ roomCode, messages }) => {
       setRoomCode(roomCode);
       setMessages(messages);
       setConnected(true);
-      setInputCode('');
-      toast.success('Joined room successfully!');
+      setInputCode("");
+      toast.success("Joined room successfully!");
     });
 
-    socket.on('new-message', (message) => {
+    socket.on("new-message", (message) => {
       setMessages((prev) => [...prev, message]);
     });
 
-    socket.on('user-joined', (userCount) => {
+    socket.on("user-joined", (userCount) => {
       setUsers(userCount);
-      toast.info('A user has joined the room');
+      toast.info("A user has joined the room");
     });
 
-    socket.on('user-left', (userCount) => {
+    socket.on("user-left", (userCount) => {
       setUsers(userCount);
-      toast.info('A user has left the room');
+      toast.info("A user has left the room");
     });
 
-    socket.on('error', (error) => {
+    socket.on("error", (error) => {
       toast.error(error);
       setIsLoading(false);
-      if (error === 'Room not found' || error === 'Room is full') {
-        setInputCode('');
+      if (error === "Room not found" || error === "Room is full") {
+        setInputCode("");
       }
     });
 
     return () => {
-      socket.off('room-created');
-      socket.off('joined-room');
-      socket.off('new-message');
-      socket.off('user-joined');
-      socket.off('user-left');
-      socket.off('error');
+      socket.off("room-created");
+      socket.off("joined-room");
+      socket.off("new-message");
+      socket.off("user-joined");
+      socket.off("user-left");
+      socket.off("error");
     };
   }, []);
 
   const createRoom = () => {
     setIsLoading(true);
-    socket.emit('create-room');
+    socket.emit("create-room");
   };
 
   const joinRoom = () => {
     if (!inputCode.trim()) {
-      toast.error('Please enter a room code');
+      toast.error("Please enter a room code");
       return;
     }
-    
+
     if (!name.trim()) {
-      toast.error('Please enter your name');
+      toast.error("Please enter your name");
       return;
     }
-    
-    socket.emit('join-room', JSON.stringify({roomId:inputCode.toUpperCase(),name}));
+
+    socket.emit("join-room", { roomId: inputCode.toUpperCase(), name });
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -186,21 +210,16 @@ export default function Page() {
   const sendMessage = (e: FormEvent) => {
     e.preventDefault();
     if (message.trim()) {
-      socket.emit('send-message', { roomCode, message, userId,name });
-      setMessage('');
+      socket.emit("send-message", { roomCode, message, userId, name });
+      setMessage("");
     }
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.write([
-      new ClipboardItem({
-        'text/plain': new Blob([text], { type: 'text/plain' }),
-      }),
-    ]).then(() => {
-      toast.success('Room code copied to clipboard!');
-    }).catch(() => {
-      toast.error('Failed to copy room code');
-    });
+    navigator.clipboard
+      .writeText(text)
+      .then(() => toast.success("Room code copied to clipboard!"))
+      .catch(() => toast.error("Failed to copy room code"));
   };
 
   return (
@@ -222,8 +241,8 @@ export default function Page() {
           <CardContent>
             {!connected ? (
               <div className="space-y-4">
-                <Button 
-                  onClick={createRoom} 
+                <Button
+                  onClick={createRoom}
                   className="w-full text-lg py-6"
                   size="lg"
                   disabled={isLoading}
@@ -252,20 +271,20 @@ export default function Page() {
                     placeholder="Enter Room Code"
                     className="text-lg py-5"
                   />
-                  <Button 
-                    onClick={joinRoom}
-                    size="lg"
-                    className="px-8"
-                  >
+                  <Button onClick={joinRoom} size="lg" className="px-8">
                     Join Room
                   </Button>
                 </div>
-   
+
                 {roomCode && (
                   <div className="text-center p-6 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-2">Share this code with your friend</p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Share this code with your friend
+                    </p>
                     <div className="flex items-center justify-center gap-2">
-                      <span className="font-mono text-2xl font-bold">{roomCode}</span>
+                      <span className="font-mono text-2xl font-bold">
+                        {roomCode}
+                      </span>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -282,7 +301,10 @@ export default function Page() {
               <div className="max-w-3xl mx-auto space-y-7">
                 <div className="flex items-center justify-between text-sm text-muted-foreground bg-muted p-3 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <span>Room Code: <span className="font-mono font-bold">{roomCode}</span></span>
+                    <span>
+                      Room Code:{" "}
+                      <span className="font-mono font-bold">{roomCode}</span>
+                    </span>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -306,11 +328,7 @@ export default function Page() {
                     placeholder="Type a message..."
                     className="text-lg py-5"
                   />
-                  <Button 
-                    type="submit"
-                    size="lg"
-                    className="px-8"
-                  >
+                  <Button type="submit" size="lg" className="px-8">
                     Send
                   </Button>
                 </form>

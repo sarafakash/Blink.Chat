@@ -7,7 +7,7 @@ interface Message {
   id: string;
   content: string;
   senderId: string;
-  sender:string;
+  sender: string;
   timestamp: Date;
 }
 
@@ -21,7 +21,12 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:3000", "https://real-time-chat-liard.vercel.app", "https://real-time-chat-amritwt.vercel.app", "https://real-time-chat-git-main-amritwt.vercel.app/"],
+    origin: [
+      "http://localhost:3000",
+      "https://real-time-chat-liard.vercel.app",
+      "https://real-time-chat-amritwt.vercel.app",
+      "https://real-time-chat-git-main-amritwt.vercel.app/"
+    ],
     methods: ["GET", "POST"]
   }
 });
@@ -30,13 +35,14 @@ const rooms = new Map<string, RoomData>();
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
-  
+
   socket.on('set-user-id', (userId: string) => {
+    // Reserved for potential session tracking
   });
 
   socket.on('create-room', () => {
     const roomCode = randomBytes(3).toString('hex').toUpperCase();
-    rooms.set(roomCode, { 
+    rooms.set(roomCode, {
       users: new Set<string>(),
       messages: [],
       lastActive: Date.now()
@@ -44,25 +50,22 @@ io.on('connection', (socket) => {
     socket.emit('room-created', roomCode);
   });
 
-  socket.on('join-room', (data) => {
-    const parsedData = JSON.parse(data);
-    const roomCode = parsedData.roomId;
-    const room = rooms.get(roomCode);
-    
+  socket.on('join-room', ({ roomId, name }) => {
+    const room = rooms.get(roomId);
     if (!room) {
       socket.emit('error', 'Room not found');
       return;
     }
 
-    socket.join(roomCode);
+    socket.join(roomId);
     room.users.add(socket.id);
     room.lastActive = Date.now();
-    
-    socket.emit('joined-room', { roomCode, messages: room.messages });
-    io.to(roomCode).emit('user-joined', room.users.size);
+
+    socket.emit('joined-room', { roomCode: roomId, messages: room.messages });
+    io.to(roomId).emit('user-joined', room.users.size);
   });
 
-  socket.on('send-message', ({ roomCode, message, userId ,name}) => {
+  socket.on('send-message', ({ roomCode, message, userId, name }) => {
     const room = rooms.get(roomCode);
     if (room) {
       room.lastActive = Date.now();
@@ -70,7 +73,7 @@ io.on('connection', (socket) => {
         id: randomBytes(4).toString('hex'),
         content: message,
         senderId: userId,
-        sender:name,
+        sender: name,
         timestamp: new Date()
       };
       room.messages.push(messageData);
@@ -93,6 +96,12 @@ io.on('connection', (socket) => {
   });
 });
 
+// Optional: expose server root endpoint
+app.get('/', (req, res) => {
+  res.send("Blink.Chat WebSocket server running");
+});
+
+// Cleanup stale empty rooms every 1 hour
 setInterval(() => {
   const now = Date.now();
   rooms.forEach((room, roomCode) => {
@@ -106,4 +115,4 @@ setInterval(() => {
 const PORT = process.env.PORT || 4000;
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-}); 
+});
