@@ -23,13 +23,12 @@ const io = new Server(httpServer, {
   cors: {
     origin: [
       "http://localhost:3000",
-      "https://real-time-chat-liard.vercel.app",
-      "https://real-time-chat-amritwt.vercel.app",
-      "https://real-time-chat-git-main-amritwt.vercel.app/"
+      "https://blink-chat-client-3579.vercel.app"
     ],
     methods: ["GET", "POST"]
   }
 });
+
 
 const rooms = new Map<string, RoomData>();
 
